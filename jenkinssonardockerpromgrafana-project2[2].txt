@@ -1,0 +1,127 @@
+jenkins ---ubuntu24 t2 medium 
+sonarqube --ubuntu24 t2 medium 
+Docker ---amazon linux 2 t2 medium 
+
+jenkins ---ubuntu24 t2 medium 
+sudo hostnamectl set-hostname jenkins
+ubuntu@ip-172-31-21-116:~$ /bin/bash
+https://www.jenkins.io/doc/book/installing/linux/#debianubuntu
+
+
+https://github.com/sureshgitnew/Jenkins-Sonarqube-Docker
+
+freestyle job:
+https://github.com/sureshgitnew/Jenkins-Sonarqube-Docker
+main
+enable GitHub hook trigger for GITScm polling it will trigger auto  in changes repo we have to go to settings in github click Webhooks add webhook
+Payload URL * 
+http://34.226.194.133:8080/github-webhook/
+select : Let me select individual events. select Pull requests & push 
+add webhook and test change anything in repo then auto trigger build 
+
+
+Now  sonarqube --ubuntu24 t2 medium
+sudo apt update -y
+sudo hostnamectl set-hostname sonarqube
+ubuntu@ip-172-31-21-116:~$ /bin/bash
+sudo apt install openjdk-17-jre -y    for the sonarqube
+https://www.sonarsource.com/products/sonarqube/downloads/  right click on community addition (Community Build) copy link 
+
+wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-25.6.0.109173.zip
+25.6.0.109173
+sudo apt install unzip -y
+unzip sonarqube-25.4.0.105899.zip
+cd /home/ubuntu/sonarqube-25.4.0.105899/bin
+cd /home/ubuntu/sonarqube-25.4.0.105899/bin/linux-x86-64
+./sonar.sh start
+http://54.91.99.211:9000/
+admin
+admin
+reset to Admin@123456
+
+create project:Create a local project
+Onix-Website-Scan
+Onix-Website-Scan
+main
+done
+now click on jenkins CI --GITHUB 
+
+Create a Jenkinsfile select others
+Create a sonar-project.properties file in your repository and paste the following code:
+sonar.projectKey=Onix-Website-Scan -----copy  key
+finish
+Now click on right side admin --my account ---security 
+generate token name:Sonaqqube-token perticular project (project analysis token) generate copy:sqp_ef10942e201325fdda590cc21819978befc905d2
+
+
+Now goto jenkins install plugins:SonarQube ScannerVersion 2.18 & SSH2 EASY
+
+Now manage jekins --tools -- add sonarqube scanner name:SonarScanner check automat save
+
+Now manage jekins --configure system SonarQube servers click on Name:Sonar-Server
+Server URL:http://54.91.99.211:9000
+
+Now configure job : add build steps- Execute SonarQube Scanner
+Analysis properties add ---key  save 
+
+manage jenkins - configure systems ---sonar(Server authentication token)  add Add Credentials --secrete text copy token secrete: sqp_ef10942e201325fdda590cc21819978befc905d2
+Sonar-Token
+save add save
+Now trigger build now once our scanned code passed then we will deploy the code to docker server
+
+
+Now Docker ---amazon linux 2 t2 medium 
+sudo hostnamectl set-hostname docker
+https://www.cyberciti.biz/faq/how-to-install-docker-on-amazon-linux-2/  docker installation
+
+docker ps
+
+then go to the jenkins server:
+sudo su jenkins
+ ssh ec2-user@34.230.31.230 : Permission denied (publickey,gssapi-keyex,gssapi-with-mic). sonar
+ 
+ Now go to docker server:
+ vi /etc/ssh/sshd_config 
+ passwordauth yes
+ systemctl restart sshd
+ passwd ec2-user
+ 123456
+ chmod 766 website/
+sudo chown -R ec2-user:ec2-user /home/ec2-user/website
+ 
+ now retry in jenkin server :
+ ssh ec2-user@34.230.31.230  now with password it will connect
+ so 
+ ssh-keygen
+ ssh-copy-id ec2-user@dockerip
+ nowwithout password it will connect done
+ 
+ now go to jenkins managejenkins--configure system -servergroup center:
+ group name:Docker-servers
+ 22
+ ec2-user
+ 123456
+ save
+ 
+ manage jenkns--configure systems ---add server list : servergroup:select-docker-servers name:Docker-1 serverip:dockerpubip
+ save
+ 
+ job: configurate-  add build steps:
+ remote shell --shell:touch test.txt
+ 
+ save
+ build nowto verify 
+ 
+ Now dockerfile
+ 
+ job -configurate- remove( remote shell touch.txt)
+
+add execute shell : 
+scp -r ./* ec2-user@34.230.31.230:/home/ec2-user/website
+ 
+
+Build steps:
+add remote shell:shell
+cd /home/ec2-user/website
+docker build -t mywebsite .
+docker run -d -p 8085:80 --name=Onix-Website mywebsite

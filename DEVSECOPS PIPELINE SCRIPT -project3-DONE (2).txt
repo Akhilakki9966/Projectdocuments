@@ -1,0 +1,98 @@
+#!/bin/bash
+sudo apt update -y
+#sudo apt upgrade -y
+wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
+echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+sudo apt update -y
+sudo apt install temurin-17-jdk -y
+/usr/bin/java --version
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+/usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+/etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update -y
+sudo apt-get install jenkins -y
+sudo systemctl start jenkins
+sudo systemctl status jenkins
+sudo chmod 777 jenkins.sh
+./jenkins.sh # this will installl jenkins
+
+sudo systemctl stop jenkins
+sudo systemctl status jenkins
+cd /etc/default
+sudo vi jenkins #chnage port HTTP_PORT=8090 and save and exit
+cd /lib/systemd/system
+sudo vi jenkins.service #change Environments="Jenkins_port=8090" save and exit
+sudo systemctl daemon-reload
+sudo systemctl restart jenkins
+sudo systemctl status jenkins
+
+
+sudo apt-get update
+sudo apt-get install docker.io -y
+sudo usermod -aG docker $USER
+newgrp docker
+sudo chmod 777 /var/run/docker.sock
+
+vi trivy.sh
+sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+sudo apt-get update
+sudo apt-get install trivy -y
+
+pipeline{
+agent any
+tools {
+jdk 'jdk17'
+maven 'maven3'
+}
+stages{
+stage ('clean Workspace'){
+steps{
+cleanWs()
+}
+}
+stage ('checkout scm') {
+steps {
+git 'https://github.com/Aj7Ay/jpetstore-6.git'
+}
+}
+stage ('maven compile') {
+steps {
+sh 'mvn clean compile'
+}
+}
+stage ('maven Test') {
+steps {
+sh 'mvn test'
+}
+}
+}
+}
+
+
+environment {
+SCANNER_HOME=tool 'sonar-scanner'
+}
+# in stages add this
+stage("Sonarqube Analysis "){
+steps{
+withSonarQubeEnv('sonar-server') {
+sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petshop \
+-Dsonar.java.binaries=. \
+-Dsonar.projectKey=Petshop '''
+}
+}
+}
+stage("quality gate"){
+steps {
+script {
+waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+}
+}
+}
+
+
+squ_1ab42d07b58d16c020e9e737e47896b5ea279431
